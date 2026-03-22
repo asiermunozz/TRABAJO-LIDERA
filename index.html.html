@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Simulador de Adultos</title>
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            background-color: #F3F4F6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .contenedor {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            width: 500px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .marcador {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 5px;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+
+        .btn-opcion {
+            width: 100%;
+            padding: 12px;
+            margin: 5px 0;
+            border: 2px solid #E5E7EB;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+        }
+
+        .btn-opcion:hover {
+            background: #EFF6FF;
+            border-color: #3B82F6;
+        }
+
+        .btn-accion {
+            margin-top: 15px;
+            padding: 12px;
+            width: 100%;
+            background: #3B82F6;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        #pantalla-feedback, #pantalla-final {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="contenedor">
+
+    <div class="marcador">
+        <div>Día: <span id="dia">1</span></div>
+        <div>💰 <span id="dinero">1000</span>€</div>
+        <div>⚡ <span id="energia">100</span></div>
+        <div>😰 <span id="estres">0</span></div>
+    </div>
+
+    <div id="pantalla-pregunta">
+        <h2 id="titulo"></h2>
+        <p id="descripcion"></p>
+        <div id="botones-opciones"></div>
+    </div>
+
+    <div id="pantalla-feedback">
+        <h2>Resultado</h2>
+        <p id="texto-feedback"></p>
+        <button class="btn-accion" onclick="siguientePregunta()">Continuar</button>
+    </div>
+
+    <div id="pantalla-final">
+        <h2>Fin del juego</h2>
+        <p id="resumen"></p>
+        <button class="btn-accion" onclick="iniciarJuego()">Reiniciar</button>
+    </div>
+
+</div>
+
+<script>
+const baseEscenarios = [
+{
+    titulo: "Tu primera nómina",
+    descripcion: "Cobras tu primer sueldo.",
+    opciones: [
+        { texto: "Ahorrar dinero", dinero: 200, estres: -5, energia: 0, feedback: "Buena decisión financiera." },
+        { texto: "Comprar móvil nuevo", dinero: -600, estres: 0, energia: 5, feedback: "Te has quedado sin ahorros." }
+    ]
+},
+{
+    titulo: "Inundación en casa",
+    descripcion: "La lavadora pierde agua.",
+    opciones: [
+        { texto: "Cerrar la llave de paso", dinero: 0, estres: -5, energia: -5, feedback: "Has evitado un desastre." },
+        { texto: "Ignorar", dinero: -300, estres: 10, energia: 0, feedback: "Se ha estropeado el suelo." }
+    ]
+},
+{
+    titulo: "Comida semanal",
+    descripcion: "Tienes que organizar la comida.",
+    opciones: [
+        { texto: "Cocinar el domingo", dinero: 50, estres: -5, energia: -10, feedback: "Ahorras dinero." },
+        { texto: "Pedir comida", dinero: -120, estres: 0, energia: 10, feedback: "Muy caro pero cómodo." }
+    ]
+},
+{
+    titulo: "El coche hace ruido",
+    descripcion: "Tu coche suena raro.",
+    opciones: [
+        { texto: "Llevar al mecánico", dinero: -150, estres: -5, energia: -5, feedback: "Has prevenido algo peor." },
+        { texto: "Ignorar", dinero: -600, estres: 10, energia: 0, feedback: "Avería grave." }
+    ]
+},
+{
+    titulo: "Domingo por la tarde",
+    descripcion: "Tienes tareas pendientes.",
+    opciones: [
+        { texto: "Organizar semana", dinero: 0, estres: -10, energia: -10, feedback: "Adulto responsable." },
+        { texto: "Jugar videojuegos", dinero: 0, estres: 5, energia: 10, feedback: "El lunes será duro." }
+    ]
+},
+{
+    titulo: "Factura de la luz",
+    descripcion: "Te llega la factura de la luz este mes.",
+    opciones: [
+        { texto: "Pagarla", dinero: -80, estres: -5, energia: 0, feedback: "Pagas y evitas problemas." },
+        { texto: "No pagarla", dinero: 0, estres: 15, energia: 0, feedback: "Te arriesgas a que te corten la luz." }
+    ]
+},
+{
+    titulo: "Invitación a una fiesta",
+    descripcion: "Tus amigos te invitan a salir de fiesta.",
+    opciones: [
+        { texto: "Ir de fiesta", dinero: -50, estres: -10, energia: -20, feedback: "Te diviertes pero estás cansado." },
+        { texto: "Quedarte en casa", dinero: 0, estres: 5, energia: 10, feedback: "Descansas pero te lo pierdes." }
+    ]
+},
+{
+    titulo: "Horas extra",
+    descripcion: "Te ofrecen trabajar horas extra.",
+    opciones: [
+        { texto: "Aceptar", dinero: 120, estres: 10, energia: -15, feedback: "Ganas dinero pero te cansas." },
+        { texto: "Rechazar", dinero: 0, estres: -5, energia: 5, feedback: "Descansas pero no ganas más dinero." }
+    ]
+},
+{
+    titulo: "Ir al gimnasio",
+    descripcion: "Hoy toca gimnasio.",
+    opciones: [
+        { texto: "Entrenar", dinero: 0, estres: -10, energia: -15, feedback: "Mejora tu salud." },
+        { texto: "No ir", dinero: 0, estres: 5, energia: 5, feedback: "Descansas pero empeoras hábitos." }
+    ]
+},
+{
+    titulo: "Compra del supermercado",
+    descripcion: "Necesitas comida para la semana.",
+    opciones: [
+        { texto: "Comprar barato y cocinar", dinero: -60, estres: -5, energia: -10, feedback: "Ahorras dinero." },
+        { texto: "Comprar comida preparada", dinero: -120, estres: 0, energia: 10, feedback: "Más caro pero cómodo." }
+    ]
+},
+{
+    titulo: "Problema con el vecino",
+    descripcion: "El vecino hace ruido por la noche.",
+    opciones: [
+        { texto: "Hablar con él", dinero: 0, estres: -5, energia: 0, feedback: "Problema solucionado." },
+        { texto: "Ignorar", dinero: 0, estres: 10, energia: -5, feedback: "Duermes mal." }
+    ]
+},
+{
+    titulo: "Curso para mejorar tu carrera",
+    descripcion: "Puedes hacer un curso que cuesta dinero.",
+    opciones: [
+        { texto: "Hacer el curso", dinero: -200, estres: 5, energia: -10, feedback: "Inviertes en tu futuro." },
+        { texto: "No hacerlo", dinero: 0, estres: 0, energia: 0, feedback: "Sigues igual." }
+    ]
+},
+{
+    titulo: "Viaje de fin de semana",
+    descripcion: "Tus amigos organizan un viaje.",
+    opciones: [
+        { texto: "Ir al viaje", dinero: -150, estres: -20, energia: -20, feedback: "Te despejas mucho." },
+        { texto: "No ir", dinero: 0, estres: 5, energia: 10, feedback: "Ahorras dinero." }
+    ]
+},
+{
+    titulo: "Se rompe el móvil",
+    descripcion: "Tu móvil deja de funcionar.",
+    opciones: [
+        { texto: "Repararlo", dinero: -100, estres: -5, energia: 0, feedback: "Problema solucionado." },
+        { texto: "Comprar uno nuevo", dinero: -600, estres: -5, energia: 5, feedback: "Muy caro." }
+    ]
+},
+{
+    titulo: "Dormir poco",
+    descripcion: "Te acuestas tarde viendo series.",
+    opciones: [
+        { texto: "Dormir poco", dinero: 0, estres: 10, energia: -20, feedback: "Mañana estarás fatal." },
+        { texto: "Dormir bien", dinero: 0, estres: -10, energia: 20, feedback: "Descansas correctamente." }
+    ]
+},
+{
+    titulo: "Mudanza",
+    descripcion: "Tienes que mudarte de piso.",
+    opciones: [
+        { texto: "Hacerla tú mismo", dinero: -50, estres: 15, energia: -25, feedback: "Muy cansado pero barato." },
+        { texto: "Pagar mudanza", dinero: -300, estres: -10, energia: -5, feedback: "Más fácil pero caro." }
+    ]
+},
+{
+    titulo: "Cita médica",
+    descripcion: "Te encuentras mal.",
+    opciones: [
+        { texto: "Ir al médico", dinero: -20, estres: -10, energia: 5, feedback: "Te cuidas." },
+        { texto: "Ignorar", dinero: 0, estres: 10, energia: -10, feedback: "Empeoras." }
+    ]
+},
+{
+    titulo: "Netflix / ocio",
+    descripcion: "Quieres relajarte viendo series.",
+    opciones: [
+        { texto: "Ver series", dinero: -10, estres: -10, energia: 5, feedback: "Te relajas." },
+        { texto: "Trabajar más", dinero: 50, estres: 10, energia: -10, feedback: "Ganas dinero pero te estresas." }
+    ]
+}
+];
+
+let escenarios = [];
+let escenarioActual = 0;
+
+let dinero = 1000;
+let energia = 100;
+let estres = 0;
+let dia = 1;
+
+const uiTitulo = document.getElementById("titulo");
+const uiDescripcion = document.getElementById("descripcion");
+const uiBotones = document.getElementById("botones-opciones");
+
+const uiDinero = document.getElementById("dinero");
+const uiEnergia = document.getElementById("energia");
+const uiEstres = document.getElementById("estres");
+const uiDia = document.getElementById("dia");
+
+const pantallaPregunta = document.getElementById("pantalla-pregunta");
+const pantallaFeedback = document.getElementById("pantalla-feedback");
+const pantallaFinal = document.getElementById("pantalla-final");
+
+const uiTextoFeedback = document.getElementById("texto-feedback");
+const uiResumen = document.getElementById("resumen");
+
+function mezclarArray(array) {
+    return array.sort(() => Math.random() - 0.5);
+}
+
+function iniciarJuego() {
+    dinero = 1000;
+    energia = 100;
+    estres = 0;
+    dia = 1;
+    escenarioActual = 0;
+
+    escenarios = mezclarArray([...baseEscenarios]);
+
+    pantallaFinal.style.display = "none";
+    pantallaFeedback.style.display = "none";
+    pantallaPregunta.style.display = "block";
+
+    actualizarMarcador();
+    cargarEscenario();
+}
+
+function actualizarMarcador() {
+    uiDinero.innerText = dinero;
+    uiEnergia.innerText = energia;
+    uiEstres.innerText = estres;
+    uiDia.innerText = dia;
+}
+
+function cargarEscenario() {
+    if (dia > 10 || dinero <= 0 || energia <= 0 || estres >= 100) {
+        terminarJuego();
+        return;
+    }
+
+    const escenario = escenarios[escenarioActual];
+
+    uiTitulo.innerText = escenario.titulo;
+    uiDescripcion.innerText = escenario.descripcion;
+
+    uiBotones.innerHTML = "";
+
+    escenario.opciones.forEach(opcion => {
+        const btn = document.createElement("button");
+        btn.className = "btn-opcion";
+        btn.innerText = opcion.texto;
+        btn.onclick = () => elegirOpcion(opcion);
+        uiBotones.appendChild(btn);
+    });
+}
+
+function elegirOpcion(opcion) {
+    dinero += opcion.dinero;
+    energia += opcion.energia;
+    estres += opcion.estres;
+
+    uiTextoFeedback.innerText = opcion.feedback;
+
+    actualizarMarcador();
+
+    pantallaPregunta.style.display = "none";
+    pantallaFeedback.style.display = "block";
+}
+
+function siguientePregunta() {
+    escenarioActual++;
+    dia++;
+
+    if (escenarioActual >= escenarios.length) {
+        escenarios = mezclarArray([...baseEscenarios]);
+        escenarioActual = 0;
+    }
+
+    pantallaFeedback.style.display = "none";
+    pantallaPregunta.style.display = "block";
+
+    cargarEscenario();
+}
+
+function terminarJuego() {
+    pantallaPregunta.style.display = "none";
+    pantallaFeedback.style.display = "none";
+    pantallaFinal.style.display = "block";
+
+    let resultado = "";
+
+    if (dinero <= 0) resultado = "Te has quedado sin dinero.";
+    else if (energia <= 0) resultado = "Te has quedado sin energía.";
+    else if (estres >= 100) resultado = "Has muerto de estrés.";
+    else resultado = "Has sobrevivido a la vida adulta.";
+
+    uiResumen.innerText = resultado + 
+        " Dinero: " + dinero +
+        " Energía: " + energia +
+        " Estrés: " + estres;
+}
+
+iniciarJuego();
+</script>
+
+</body>
+</html>
+
