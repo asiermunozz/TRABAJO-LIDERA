@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Adultos</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #F9FAFB;
+            color: #1F2937;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .contenedor {
+            background-color: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+            border: 2px solid #E5E7EB;
+        }
+        .marcador {
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+            color: #6B7280;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #F3F4F6;
+        }
+        .etiqueta-seccion {
+            color: #3B82F6;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        h2 { margin: 10px 0; }
+        p { margin-bottom: 25px; line-height: 1.5; }
+        
+        .btn-opcion {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            margin-bottom: 10px;
+            background-color: white;
+            border: 2px solid #E5E7EB;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-opcion:hover {
+            border-color: #3B82F6;
+            background-color: #EFF6FF;
+        }
+        
+        .btn-accion {
+            background-color: #3B82F6;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 20px;
+            width: 100%;
+        }
+        .btn-accion:hover { background-color: #2563EB; }
+        .btn-secundario {
+            background-color: #10B981; 
+        }
+        .btn-secundario:hover { background-color: #059669; }
+
+        /* Ocultamos las pantallas que no son la principal al inicio */
+        #pantalla-feedback, #pantalla-final { display: none; }
+    </style>
+</head>
+<body>
+
+    <div class="contenedor">
+        <div class="marcador">
+            <span id="texto-seccion" class="etiqueta-seccion">SECCIÓN</span>
+            <span>Puntos: <span id="puntos">0</span></span>
+        </div>
+
+        <div id="pantalla-pregunta">
+            <h2 id="titulo">Cargando...</h2>
+            <p id="descripcion"></p>
+            <div id="botones-opciones"></div>
+        </div>
+
+        <div id="pantalla-feedback">
+            <h2 id="titulo-feedback">¡Resultado!</h2>
+            <p id="texto-feedback"></p>
+            <button class="btn-accion" onclick="siguientePregunta()">Siguiente Reto</button>
+        </div>
+
+        <div id="pantalla-final">
+            <h2>¡Has sobrevivido a la Vida Adulta!</h2>
+            <p>Tu puntuación final es de <strong id="puntuacion-final">0</strong> puntos.</p>
+            <button class="btn-accion btn-secundario" onclick="reiniciarJuego()">Volver a Jugar</button>
+        </div>
+    </div>
+
+    <script>
+        const baseEscenarios = [
+            {
+                seccion: "Vivienda",
+                titulo: "Inundación en el baño",
+                descripcion: "Llegas a casa y el agua de la lavadora llega al pasillo. ¿Qué es lo primero que haces?",
+                opciones: [
+                    { texto: "Llamar al casero gritando", puntos: -5, feedback: "❌ Pierdes tiempo valioso y el agua sigue saliendo." },
+                    { texto: "Buscar la llave de paso y cortarla", puntos: 10, feedback: "✅ ¡Correcto! Primero frenar la sangría, luego buscar culpables." },
+                    { texto: "Poner toallas en el suelo", puntos: 0, feedback: "⚠️ Ayuda, pero el agua sigue saliendo de la tubería." }
+                ]
+            },
+            {
+                seccion: "Finanzas",
+                titulo: "Tu primera nómina",
+                descripcion: "Acabas de cobrar tu primer sueldo completo. ¿Cuál es tu primer movimiento?",
+                opciones: [
+                    { texto: "Comprar el último móvil a plazos", puntos: -10, feedback: "❌ Error de novato. Te acabas de endeudar el día 1." },
+                    { texto: "Automatizar un ahorro del 20%", puntos: 15, feedback: "✅ ¡Mentalidad de éxito! Estás creando tu fondo de emergencia." },
+                    { texto: "Dejarlo en la cuenta corriente", puntos: 0, feedback: "⚠️ No está mal, pero la inflación se comerá tu dinero poco a poco." }
+                ]
+            },
+            {
+                seccion: "Burocracia",
+                titulo: "Carta certificada",
+                descripcion: "Te dejan un aviso de Correos de una carta certificada de la Agencia Tributaria (Hacienda).",
+                opciones: [
+                    { texto: "Ignorarla, si no la recojo no existe", puntos: -20, feedback: "❌ ¡Gravísimo error! Hacienda da por notificada la carta y los recargos empezarán a sumar." },
+                    { texto: "Ir a recogerla inmediatamente", puntos: 10, feedback: "✅ Afrontar el problema. Tienes plazos estrictos para responder, mejor saber de qué trata hoy." }
+                ]
+            },
+            {
+                seccion: "Nutrición",
+                titulo: "El reto del 'Meal Prep'",
+                descripcion: "Tienes que organizar tus comidas semanales. Tu objetivo diario es llegar a las 3000kcal y 165g de proteína, pero tienes poquísimo tiempo para cocinar.",
+                opciones: [
+                    { texto: "Comprar todo precocinado", puntos: -10, feedback: "❌ Gasto enorme de dinero, ultraprocesados, y es casi imposible cuadrar bien esos macros." },
+                    { texto: "Cocinar en lote (Batch Cooking) el domingo", puntos: 15, feedback: "✅ ¡Acierto! Consigues tus metas optimizando tu tiempo y ahorrando mucho dinero." },
+                    { texto: "Pedir comida a domicilio a diario", puntos: -15, feedback: "❌ Ruina financiera instantánea. Tu cartera ha llorado." }
+                ]
+            },
+            {
+                seccion: "Trabajo",
+                titulo: "La entrevista de trabajo",
+                descripcion: "Te ofrecen un puesto genial. Te dicen: 'Te pagamos 2500€ al mes, pero te tienes que dar de alta como autónomo y facturarnos a nosotros'.",
+                opciones: [
+                    { texto: "¡Aceptar de inmediato! Es mucho dinero", puntos: -15, feedback: "❌ Cuidado, es la trampa del 'Falso Autónomo'. Vas a pagar tú los impuestos, la cuota y no tendrás vacaciones pagadas ni paro." },
+                    { texto: "Rechazar o pedir contrato por cuenta ajena", puntos: 15, feedback: "✅ Sabes defender tus derechos laborales. Lo barato sale caro." }
+                ]
+            },
+            {
+                seccion: "Finanzas",
+                titulo: "El banco te llama",
+                descripcion: "Te ofrecen una tarjeta de crédito 'Revolving' para pagar tus compras en cómodos plazos de 30€ al mes sin importar lo que gastes.",
+                opciones: [
+                    { texto: "Rechazarla amablemente", puntos: 10, feedback: "✅ ¡Te has salvado! Las tarjetas revolving tienen intereses abusivos." },
+                    { texto: "Aceptarla para imprevistos", puntos: -15, feedback: "❌ Has caído en la trampa de la deuda infinita. Esos 30€ al mes apenas cubrirán los intereses." }
+                ]
+            },
+            {
+                seccion: "Hogar",
+                titulo: "El apagón",
+                descripcion: "Se va la luz de repente. Vas al cuadro eléctrico y ves que un interruptor ('plomo') ha saltado y huele a plástico quemado.",
+                opciones: [
+                    { texto: "Volver a subir el interruptor rápido", puntos: -20, feedback: "❌ ¡Peligro de incendio! Si huele a quemado hay un cortocircuito grave." },
+                    { texto: "Llamar a un electricista sin tocar nada", puntos: 10, feedback: "✅ La seguridad primero. Los problemas eléctricos graves no son para tutoriales de YouTube." }
+                ]
+            }
+        ];
+
+        let escenariosJugables = [];
+        let preguntaActual = 0;
+        let puntosTotales = 0;
+
+        const uiSeccion = document.getElementById("texto-seccion");
+        const uiPuntos = document.getElementById("puntos");
+        const uiTitulo = document.getElementById("titulo");
+        const uiDescripcion = document.getElementById("descripcion");
+        const uiBotones = document.getElementById("botones-opciones");
+        
+        const pantallaPregunta = document.getElementById("pantalla-pregunta");
+        const pantallaFeedback = document.getElementById("pantalla-feedback");
+        const pantallaFinal = document.getElementById("pantalla-final");
+        const uiTextoFeedback = document.getElementById("texto-feedback");
+        const uiPuntuacionFinal = document.getElementById("puntuacion-final");
+
+        function mezclarArray(array) {
+            let arrayMezclado = [...array];
+            for (let i = arrayMezclado.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arrayMezclado[i], arrayMezclado[j]] = [arrayMezclado[j], arrayMezclado[i]];
+            }
+            return arrayMezclado;
+        }
+
+        function iniciarJuego() {
+            preguntaActual = 0;
+            puntosTotales = 0;
+            uiPuntos.innerText = puntosTotales;
+            escenariosJugables = mezclarArray(baseEscenarios);
+            
+            // Asegurarnos de que las pantallas correctas se muestran al iniciar
+            pantallaFinal.style.display = "none";
+            pantallaFeedback.style.display = "none";
+            pantallaPregunta.style.display = "block";
+            
+            cargarPregunta();
+        }
+
+        function cargarPregunta() {
+            if (preguntaActual >= escenariosJugables.length) {
+                // Si ya no hay más preguntas, mostramos la pantalla final
+                uiSeccion.innerText = "FIN DEL JUEGO";
+                pantallaPregunta.style.display = "none";
+                uiPuntuacionFinal.innerText = puntosTotales;
+                pantallaFinal.style.display = "block";
+                return;
+            }
+
+            const escenario = escenariosJugables[preguntaActual];
+            
+            uiSeccion.innerText = escenario.seccion;
+            uiTitulo.innerText = escenario.titulo;
+            uiDescripcion.innerText = escenario.descripcion;
+            
+            uiBotones.innerHTML = "";
+
+            escenario.opciones.forEach(opcion => {
+                const boton = document.createElement("button");
+                boton.className = "btn-opcion";
+                boton.innerText = opcion.texto;
+                boton.onclick = () => procesarRespuesta(opcion.puntos, opcion.feedback);
+                uiBotones.appendChild(boton);
+            });
+        }
+
+        function procesarRespuesta(puntosGanados, textoFeedback) {
+            puntosTotales += puntosGanados;
+            uiPuntos.innerText = puntosTotales;
+            uiTextoFeedback.innerText = textoFeedback;
+            
+            pantallaPregunta.style.display = "none";
+            pantallaFeedback.style.display = "block";
+        }
+
+        function siguientePregunta() {
+            preguntaActual++;
+            pantallaFeedback.style.display = "none";
+            pantallaPregunta.style.display = "block";
+            cargarPregunta();
+        }
+
+        function reiniciarJuego() {
+            iniciarJuego();
+        }
+
+        // Arrancamos el juego
+        iniciarJuego();
+    </script>
+</body>
+</html>
